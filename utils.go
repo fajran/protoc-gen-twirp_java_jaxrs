@@ -51,10 +51,22 @@ func getJavaOuterClassName(file *descriptor.FileDescriptorProto) string {
 	return name
 }
 
-func getJavaServiceClientClassName(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
+func getJavaServiceClassName(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
 	outerClass := getJavaOuterClassName(file)
 	serviceName := camelCase(service.GetName())
-	return fmt.Sprintf("%s_%sClient", outerClass, serviceName)
+	return fmt.Sprintf("%s_%s", outerClass, serviceName)
+}
+
+func getJavaServiceClassFile(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
+	serviceClass := getJavaServiceClassName(file, service)
+	pkg := getJavaPackage(file)
+	dir := strings.Replace(pkg, ".", "/", -1)
+	return fmt.Sprintf("%s/%s.java", dir, serviceClass)
+}
+
+func getJavaServiceClientClassName(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
+	serviceClass := getJavaServiceClassName(file, service)
+	return fmt.Sprintf("%sClient", serviceClass)
 }
 
 func getJavaServiceClientClassFile(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
