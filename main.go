@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -11,29 +12,34 @@ import (
 func main() {
 	data, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
-		panic("error reading input")
+		fmt.Fprintln(os.Stderr, "error reading input")
+		os.Exit(1)
 	}
 
 	req := &plugin.CodeGeneratorRequest{}
 	err = proto.Unmarshal(data, req)
 	if err != nil {
-		panic("error parsing input proto")
+		fmt.Fprintln(os.Stderr, "error parsing input proto")
+		os.Exit(1)
 	}
 
 	g := newGenerator(req)
 
 	err = g.Generate()
 	if err != nil {
-		panic("error generating output")
+		fmt.Fprintf(os.Stderr, "error generating output: %s\n", err)
+		os.Exit(1)
 	}
 
 	data, err = proto.Marshal(g.Response)
 	if err != nil {
-		panic("error marshaling output proto")
+		fmt.Fprintln(os.Stderr, "error marshaling output proto")
+		os.Exit(1)
 	}
 
 	_, err = os.Stdout.Write(data)
 	if err != nil {
-		panic("error writing output")
+		fmt.Fprintln(os.Stderr, "error writing output")
+		os.Exit(1)
 	}
 }
