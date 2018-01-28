@@ -62,6 +62,25 @@ func getJavaOuterClassFile(file *descriptor.FileDescriptorProto) string {
 	}
 }
 
+func containsType(name string, file *descriptor.FileDescriptorProto) bool {
+	for _, t := range file.GetEnumType() {
+		if t.GetName() == name {
+			return true
+		}
+	}
+	for _, t := range file.GetMessageType() {
+		if t.GetName() == name {
+			return true
+		}
+	}
+	for _, t := range file.GetService() {
+		if t.GetName() == name {
+			return true
+		}
+	}
+	return false
+}
+
 func getJavaServiceClassName(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
 	serviceName := camelCase(service.GetName())
 	return fmt.Sprintf("%s", serviceName)
@@ -80,7 +99,11 @@ func getJavaServiceClassFile(file *descriptor.FileDescriptorProto, service *desc
 
 func getJavaServiceClientClassName(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
 	serviceName := camelCase(service.GetName())
-	return fmt.Sprintf("%sClient", serviceName)
+	name := fmt.Sprintf("%sClient", serviceName)
+	if containsType(name, file) {
+		name = fmt.Sprintf("%sTwirpClient", serviceName)
+	}
+	return name
 }
 
 func getJavaServiceClientClassFile(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
