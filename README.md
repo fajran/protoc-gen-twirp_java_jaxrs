@@ -1,6 +1,10 @@
 Twirp generator for Java/JAX-RS Client and Server
 =================================================
 
+**ATTENTION** This tool is still actively developed. There is no guarantee that
+the generated code, interface, or even the way they are supposed to be used are
+stable.
+
 Build
 -----
 
