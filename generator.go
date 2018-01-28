@@ -65,14 +65,6 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
 		g.P(`package `, pkg, `;`)
 		g.P()
 	}
-	g.P(`import java.io.InputStream;`)
-	g.P(`import java.util.function.Function;`)
-	g.P(`import javax.ws.rs.client.Entity;`)
-	g.P(`import javax.ws.rs.client.WebTarget;`)
-	g.P(`import javax.ws.rs.core.Response;`)
-	g.P(`import javax.ws.rs.core.StreamingOutput;`)
-	g.P(`import com.google.protobuf.MessageLite;`)
-	g.P()
 
 	// TODO add comment
 
@@ -82,13 +74,13 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
 
 	g.P(`public class `, serviceClass, ` implements `, interfaceClass, ` {`)
 	g.P(`  private static final String PATH = "/twirp/`, servicePath, `";`)
-	g.P(`  private final WebTarget target;`)
+	g.P(`  private final javax.ws.rs.client.WebTarget target;`)
 	g.P()
-	g.P(`  public `, serviceClass, `(WebTarget target) {`)
+	g.P(`  public `, serviceClass, `(javax.ws.rs.client.WebTarget target) {`)
 	g.P(`    this.target = target;`)
 	g.P(`  }`)
 	g.P()
-	g.P(`  private <T> T _parseSafely(InputStream input, FunctionE<InputStream, T> fn) {`)
+	g.P(`  private <T> T _parseSafely(java.io.InputStream input, FunctionE<java.io.InputStream, T> fn) {`)
 	g.P(`    try {`)
 	g.P(`      return fn.apply(input);`)
 	g.P(`    } catch (Exception e) {`)
@@ -101,11 +93,11 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
 	g.P(`    B apply(A input) throws Exception;`)
 	g.P(`  }`)
 	g.P()
-	g.P(`  private <R> R _call(String path, MessageLite request, Function<InputStream, R> parser) {`)
-	g.P(`    Response response = target.path(path)`)
+	g.P(`  private <R> R _call(String path, com.google.protobuf.MessageLite request, java.util.function.Function<java.io.InputStream, R> parser) {`)
+	g.P(`    javax.ws.rs.core.Response response = target.path(path)`)
 	g.P(`        .request("application/protobuf")`)
-	g.P(`        .post(Entity.entity((StreamingOutput) request::writeTo, "application/protobuf"));`)
-	g.P(`    InputStream body = response.readEntity(InputStream.class);`)
+	g.P(`        .post(javax.ws.rs.client.Entity.entity((javax.ws.rs.core.StreamingOutput) request::writeTo, "application/protobuf"));`)
+	g.P(`    java.io.InputStream body = response.readEntity(java.io.InputStream.class);`)
 	g.P(`    return parser.apply(body);`)
 	g.P(`  }`)
 
@@ -119,7 +111,7 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
 		// add comment
 		g.P(`  @Override`)
 		g.P(`  public `, outputType, ` `, methodName, `(`, inputType, ` request) {`)
-		g.P(`    Function<InputStream, `, outputType, `> parser =`)
+		g.P(`    java.util.function.Function<java.io.InputStream, `, outputType, `> parser =`)
 		g.P(`        (input) -> _parseSafely(input, `, outputType, `::parseFrom);`)
 		g.P(`    return _call(PATH + "/`, methodPath, `", request, parser);`)
 		g.P(`  }`)
