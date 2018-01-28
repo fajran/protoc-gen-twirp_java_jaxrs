@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
@@ -29,13 +30,20 @@ func (g *generator) Generate() error {
 	g.Response = &plugin.CodeGeneratorResponse{}
 
 	for _, file := range g.getProtoFiles() {
-		g.processFile(file)
+		err := g.processFile(file)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (g *generator) processFile(file *descriptor.FileDescriptorProto) {
+func (g *generator) processFile(file *descriptor.FileDescriptorProto) error {
+	if file.Options.GetJavaGenericServices() {
+		return fmt.Errorf("twirp_java_jaxrs cannot not work with java_generic_services option")
+	}
+
 	for _, service := range file.GetService() {
 		out := g.generateServiceInterface(file, service)
 		g.Response.File = append(g.Response.File, out)
@@ -43,6 +51,8 @@ func (g *generator) processFile(file *descriptor.FileDescriptorProto) {
 		out = g.generateServiceClient(file, service)
 		g.Response.File = append(g.Response.File, out)
 	}
+
+	return nil
 }
 
 func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) *plugin.CodeGeneratorResponse_File {
