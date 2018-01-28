@@ -93,12 +93,17 @@ func getJavaPackage(file *descriptor.FileDescriptorProto) string {
 
 func getJavaType(file *descriptor.FileDescriptorProto, name string) string {
 	pkg := getJavaPackage(file)
-	outerClass := getJavaOuterClassName(file)
 
 	p := strings.LastIndex(name, ".")
 	typeName := name[p+1:]
 
-	return fmt.Sprintf("%s.%s.%s", pkg, outerClass, typeName)
+	multi := file.Options.GetJavaMultipleFiles()
+	if multi {
+		return fmt.Sprintf("%s.%s", pkg, typeName)
+	} else {
+		outerClass := getJavaOuterClassName(file)
+		return fmt.Sprintf("%s.%s.%s", pkg, outerClass, typeName)
+	}
 }
 
 func camelCase(str string) string {
