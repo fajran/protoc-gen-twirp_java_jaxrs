@@ -80,13 +80,7 @@ func getJavaServiceClassFile(file *descriptor.FileDescriptorProto, service *desc
 
 func getJavaServiceClientClassName(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
 	serviceName := camelCase(service.GetName())
-	multi := file.Options.GetJavaMultipleFiles()
-	if multi {
-		return fmt.Sprintf("%sClient", serviceName)
-	} else {
-		outerClass := getJavaOuterClassName(file)
-		return fmt.Sprintf("%s_%sClient", outerClass, serviceName)
-	}
+	return fmt.Sprintf("%sClient", serviceName)
 }
 
 func getJavaServiceClientClassFile(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
