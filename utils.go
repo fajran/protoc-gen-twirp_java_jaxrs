@@ -54,8 +54,12 @@ func getJavaOuterClassName(file *descriptor.FileDescriptorProto) string {
 func getJavaOuterClassFile(file *descriptor.FileDescriptorProto) string {
 	className := getJavaOuterClassName(file)
 	pkg := getJavaPackage(file)
-	dir := strings.Replace(pkg, ".", "/", -1)
-	return fmt.Sprintf("%s/%s.java", dir, className)
+	if pkg == "" {
+		return fmt.Sprintf("%s.java", className)
+	} else {
+		dir := strings.Replace(pkg, ".", "/", -1)
+		return fmt.Sprintf("%s/%s.java", dir, className)
+	}
 }
 
 func getJavaServiceClassName(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
@@ -66,8 +70,12 @@ func getJavaServiceClassName(file *descriptor.FileDescriptorProto, service *desc
 func getJavaServiceClassFile(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
 	serviceClass := getJavaServiceClassName(file, service)
 	pkg := getJavaPackage(file)
-	dir := strings.Replace(pkg, ".", "/", -1)
-	return fmt.Sprintf("%s/%s.java", dir, serviceClass)
+	if pkg == "" {
+		return fmt.Sprintf("%s.java", serviceClass)
+	} else {
+		dir := strings.Replace(pkg, ".", "/", -1)
+		return fmt.Sprintf("%s/%s.java", dir, serviceClass)
+	}
 }
 
 func getJavaServiceClientClassName(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
@@ -84,8 +92,12 @@ func getJavaServiceClientClassName(file *descriptor.FileDescriptorProto, service
 func getJavaServiceClientClassFile(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
 	serviceClass := getJavaServiceClientClassName(file, service)
 	pkg := getJavaPackage(file)
-	dir := strings.Replace(pkg, ".", "/", -1)
-	return fmt.Sprintf("%s/%s.java", dir, serviceClass)
+	if pkg == "" {
+		return fmt.Sprintf("%s.java", serviceClass)
+	} else {
+		dir := strings.Replace(pkg, ".", "/", -1)
+		return fmt.Sprintf("%s/%s.java", dir, serviceClass)
+	}
 }
 
 func getJavaPackage(file *descriptor.FileDescriptorProto) string {
@@ -98,12 +110,14 @@ func getJavaPackage(file *descriptor.FileDescriptorProto) string {
 
 func getJavaType(file *descriptor.FileDescriptorProto, name string) string {
 	pkg := getJavaPackage(file)
+	multi := file.Options.GetJavaMultipleFiles()
 
 	p := strings.LastIndex(name, ".")
 	typeName := name[p+1:]
 
-	multi := file.Options.GetJavaMultipleFiles()
-	if multi {
+	if pkg == "" {
+		return fmt.Sprintf("%s", typeName)
+	} else if multi {
 		return fmt.Sprintf("%s.%s", pkg, typeName)
 	} else {
 		outerClass := getJavaOuterClassName(file)
