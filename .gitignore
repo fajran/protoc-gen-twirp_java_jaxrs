@@ -17,3 +17,6 @@
 
 tmp/
 
+#Idea project files
+.idea
+

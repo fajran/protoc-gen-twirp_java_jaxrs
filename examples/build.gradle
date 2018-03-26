@@ -1,0 +1,15 @@
+
+subprojects() {
+    apply plugin: 'java'
+    apply plugin: 'idea'
+
+    compileJava {
+        options.encoding = "UTF-8" 
+    }
+    buildscript {
+
+    }
+    repositories {
+        mavenCentral()
+    }
+}
