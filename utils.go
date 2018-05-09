@@ -17,7 +17,7 @@ func getProtoName(file *descriptor.FileDescriptorProto) string {
 	name := file.GetName()
 	ext := filepath.Ext(name)
 	if ext == ".proto" || ext == ".protodevel" {
-		name = name[0 : len(name)-len(ext)]
+		name = name[0: len(name)-len(ext)]
 	}
 	return name
 }
@@ -108,6 +108,10 @@ func getJavaServiceClientClassName(file *descriptor.FileDescriptorProto, service
 
 func getJavaServiceClientClassFile(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
 	serviceClass := getJavaServiceClientClassName(file, service)
+	return getJavaServiceClientClassFileByString(file, serviceClass)
+}
+
+func getJavaServiceClientClassFileByString(file *descriptor.FileDescriptorProto, serviceClass string) string {
 	pkg := getJavaPackage(file)
 	if pkg == "" {
 		return fmt.Sprintf("%s.java", serviceClass)

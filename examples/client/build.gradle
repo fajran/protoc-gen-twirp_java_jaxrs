@@ -1,0 +1,8 @@
+apply plugin: 'application'
+
+mainClassName = "Main"
+
+dependencies {
+    compile project(':lib')
+    compile group: 'org.jboss.resteasy', name: 'resteasy-client', version: '3.5.0.Final'
+}

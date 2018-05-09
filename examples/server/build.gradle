@@ -1,0 +1,9 @@
+apply plugin: 'application'
+
+mainClassName = "Main"
+
+dependencies {
+    compile project(':lib')
+    compile 'org.jboss.resteasy:resteasy-undertow:3.5.0.Final'
+    compile 'io.undertow:undertow-servlet:2.0.3.Final'
+}

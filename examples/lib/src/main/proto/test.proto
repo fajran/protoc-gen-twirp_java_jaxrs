@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package twitch.users.email;
+
+service EmailBoss {
+    rpc UpdateEmail(UpdateEmailRequest) returns (UpdateEmailResponse);
+}
+
+message UpdateEmailRequest {
+    int64 user_id = 1;
+    string new_email = 2;
+}
+message UpdateEmailResponse {
+    // EmailBoss may clean up the email it receives to trim whitespace
+    // or remove superfluous characters. The cleaned_email will be the
+    // email actually stored after this cleaning.
+    string cleaned_email = 1;
+}
+
