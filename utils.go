@@ -17,7 +17,7 @@ func getProtoName(file *descriptor.FileDescriptorProto) string {
 	name := file.GetName()
 	ext := filepath.Ext(name)
 	if ext == ".proto" || ext == ".protodevel" {
-		name = name[0: len(name)-len(ext)]
+		name = name[0 : len(name)-len(ext)]
 	}
 	return name
 }
@@ -132,18 +132,23 @@ func getJavaPackage(file *descriptor.FileDescriptorProto) string {
 func getJavaType(file *descriptor.FileDescriptorProto, name string) string {
 	pkg := getJavaPackage(file)
 	multi := file.Options.GetJavaMultipleFiles()
+	if name[0:1] == "." {
+		name = name[1:]
+	}
+	tfpath := strings.Split(name, ".")
+	tname := tfpath[len(tfpath)-1]
+	tpath := tfpath[0:len(tfpath)-1]
+	if pkg != ""{
+		tpath = append([]string{pkg},tpath[0:]...)
+	}
 
-	p := strings.LastIndex(name, ".")
-	typeName := name[p+1:]
-
-	if pkg == "" {
-		return fmt.Sprintf("%s", typeName)
-	} else if multi {
-		return fmt.Sprintf("%s.%s", pkg, typeName)
+	if multi {
+		return strings.Join(append(tpath, tname),".")
 	} else {
 		outerClass := getJavaOuterClassName(file)
-		return fmt.Sprintf("%s.%s.%s", pkg, outerClass, typeName)
+		return strings.Join(append(tpath, outerClass, tname),".")
 	}
+	return name
 }
 
 func camelCase(str string) string {

@@ -19,4 +19,11 @@ tmp/
 
 #Idea project files
 .idea
+protoc-gen-twirp_java_jaxrs
 
+*.project
+*.settings
+*.classpath
+examples/client/bin/*
+examples/lib/bin/*
+examples/server/bin/*
