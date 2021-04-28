@@ -206,7 +206,7 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
     g.P(`     final javax.ws.rs.client.AsyncInvoker invoker = this.target.path(path).request("application/protobuf").async();`)
     g.P(`     final javax.ws.rs.client.Entity<com.google.protobuf.Message> entity = javax.ws.rs.client.Entity.entity(request, "application/protobuf");`)
     g.P(`     java.util.concurrent.CompletableFuture<R> future = new java.util.concurrent.CompletableFuture<>();`)
-    g.P(`     invoker.post(entity, new javax.ws.rs.client.InvocationCallback<Response>() {`)
+    g.P(`     invoker.post(entity, new javax.ws.rs.client.InvocationCallback<javax.ws.rs.core.Response>() {`)
     g.P(`        private final java.util.concurrent.atomic.AtomicInteger count = new java.util.concurrent.atomic.AtomicInteger(0);`)
 	g.P()
     g.P(`        @Override`)
