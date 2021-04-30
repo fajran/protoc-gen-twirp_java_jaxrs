@@ -220,7 +220,7 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
 	g.P()
     g.P(`      @Override`)
     g.P(`      public void failed(Throwable throwable) {`)
-    g.P(`        if (count.getAndInecrement() < retries) {`)
+    g.P(`        if (count.getAndIncrement() < retries) {`)
     g.P(`          try {`)
     g.P(`            Thread.sleep(500);`)
     g.P(`          } catch (InterruptedException e) {`)
