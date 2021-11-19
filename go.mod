@@ -1,4 +1,4 @@
-module github.com/re-l124c41/protoc-gen-twirp_java_jaxrs
+module github.com/Qavfn3344/protoc-gen-twirp_java_jaxrs
 
 go 1.8
 
