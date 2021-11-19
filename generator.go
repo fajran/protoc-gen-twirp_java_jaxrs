@@ -289,7 +289,6 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
 
         g.P()
         g.P(`// Performing a request with headers`)
-        g.P(`  @Override`)
         g.P(`  public `, outputType, ` `, methodName, `(`, inputType, ` request, javax.ws.rs.core.MultivaluedMap<String, Object> headers) {`)
         g.P(`    return call("/`, methodPath, `", request, headers, `, outputType, `.class);`)
         g.P(`  }`)
