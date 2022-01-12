@@ -440,8 +440,9 @@ func (g *generator) GetType(file *descriptorpb.FileDescriptorProto, name string)
         path = getJavaPackage(file)
     } else {
         for _, dep := range g.Request.GetProtoFile() {
-            if dep.GetPackage() == pkg && containsType(class, file){
-                path = getJavaPackage(file)
+            if dep.GetPackage() == pkg && containsType(class, dep){
+                path = getJavaPackage(dep)
+                break
             }
         }
     }
