@@ -430,8 +430,7 @@ func (g *generator) GetType(file *descriptorpb.FileDescriptorProto, name string)
 
     path, pkg, class, dot := "", "", "", strings.LastIndex(name, ".")
     if dot > -1 {
-        slice := strings.Split(name, ".")
-        pkg, class = slice[0], slice[1]
+        pkg, class = name[:dot], name[dot+1:]
     } else {
         pkg, class = "", name
     }
