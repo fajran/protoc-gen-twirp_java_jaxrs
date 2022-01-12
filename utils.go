@@ -139,7 +139,7 @@ func getJavaImportedPackage(file *descriptorpb.FileDescriptorProto, name string)
 			break
 		}
 	}
-	src , err := os.ReadFile(fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep))
+	src , err := os.ReadFile(fmt.Sprintf("%s", dep))
 
 	if err != nil {
 		panic(err)
