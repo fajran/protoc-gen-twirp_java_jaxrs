@@ -3,22 +3,21 @@ package main
 import (
     "bytes"
     "fmt"
-
-    "github.com/golang/protobuf/proto"
-    "github.com/golang/protobuf/protoc-gen-go/descriptor"
-    plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
+    "google.golang.org/protobuf/proto"
+    "google.golang.org/protobuf/types/descriptorpb"
+    "google.golang.org/protobuf/types/pluginpb"
     "strings"
 )
 
 type generator struct {
-    Request  *plugin.CodeGeneratorRequest
-    Response *plugin.CodeGeneratorResponse
+    Request  *pluginpb.CodeGeneratorRequest
+    Response *pluginpb.CodeGeneratorResponse
 
     output *bytes.Buffer
     indent string
 }
 
-func newGenerator(req *plugin.CodeGeneratorRequest) *generator {
+func newGenerator(req *pluginpb.CodeGeneratorRequest) *generator {
     return &generator{
         Request:  req,
         Response: nil,
@@ -28,7 +27,7 @@ func newGenerator(req *plugin.CodeGeneratorRequest) *generator {
 }
 
 func (g *generator) Generate() error {
-    g.Response = &plugin.CodeGeneratorResponse{}
+    g.Response = &pluginpb.CodeGeneratorResponse{}
 
     g.Response.File = append(g.Response.File, g.generateResponseMetaDataProcessorInterface())
     for _, file := range g.getProtoFiles() {
@@ -41,14 +40,14 @@ func (g *generator) Generate() error {
     return nil
 }
 
-func (g *generator) processFile(file *descriptor.FileDescriptorProto) error {
+func (g *generator) processFile(file *descriptorpb.FileDescriptorProto) error {
     if file.Options.GetJavaGenericServices() {
         return fmt.Errorf("twirp_java_jaxrs cannot not work with java_generic_services option")
     }
 
     g.Response.File = append(g.Response.File, g.generateProvider(file))
 
-    for _, service := range file.GetService() {
+    for _, service := range file.Service {
         out := g.generateServiceInterface(file, service)
         g.Response.File = append(g.Response.File, out)
 
@@ -59,7 +58,7 @@ func (g *generator) processFile(file *descriptor.FileDescriptorProto) error {
     return nil
 }
 
-func (g *generator) generateResponseMetaDataProcessorInterface() *plugin.CodeGeneratorResponse_File {
+func (g *generator) generateResponseMetaDataProcessorInterface() *pluginpb.CodeGeneratorResponse_File {
 
     serviceName := "IResponseMetaDataProcessor"
 
@@ -73,14 +72,14 @@ func (g *generator) generateResponseMetaDataProcessorInterface() *plugin.CodeGen
     g.P(`}`)
     g.P()
 
-    out := &plugin.CodeGeneratorResponse_File{}
+    out := &pluginpb.CodeGeneratorResponse_File{}
     out.Content = proto.String(g.output.String())
     out.Name = proto.String(fmt.Sprintf("plugin/%s.java", serviceName))
     g.Reset()
     return out
 }
 
-func (g *generator) generateProvider(file *descriptor.FileDescriptorProto) *plugin.CodeGeneratorResponse_File {
+func (g *generator) generateProvider(file *descriptorpb.FileDescriptorProto) *pluginpb.CodeGeneratorResponse_File {
 
     multi := file.Options.GetJavaMultipleFiles()
     serviceName := "ProtoBufMessageProvider"
@@ -165,7 +164,7 @@ func (g *generator) generateProvider(file *descriptor.FileDescriptorProto) *plug
     g.P(`}`)
     g.P()
 
-    out := &plugin.CodeGeneratorResponse_File{}
+    out := &pluginpb.CodeGeneratorResponse_File{}
     out.Content = proto.String(g.output.String())
     if multi {
         out.Name = proto.String(getJavaServiceClientClassFileByString(file, serviceName))
@@ -177,7 +176,7 @@ func (g *generator) generateProvider(file *descriptor.FileDescriptorProto) *plug
     return out
 }
 
-func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) *plugin.CodeGeneratorResponse_File {
+func (g *generator) generateServiceClient(file *descriptorpb.FileDescriptorProto, service *descriptorpb.ServiceDescriptorProto) *pluginpb.CodeGeneratorResponse_File {
     multi := file.Options.GetJavaMultipleFiles()
 
     if multi {
@@ -195,8 +194,8 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
 
     serviceClass := getJavaServiceClientClassName(file, service)
     servicePath := g.getServicePath(file, service)
-    interfaceClass := getJavaType(file, getJavaServiceClassName(file, service))
-    provider := getJavaType(file, "ProtoBufMessageProvider")
+    interfaceClass := getJavaFQN(file, getJavaServiceClassName(file, service))
+    provider := getJavaFQN(file, "ProtoBufMessageProvider")
 
     static := ""
     if !multi {
@@ -280,10 +279,11 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
     g.P(`    return future;`)
     g.P(`  }`)
     g.P()
+    
 
-    for _, method := range service.GetMethod() {
-        inputType := getJavaType(file, method.GetInputType())
-        outputType := getJavaType(file, method.GetOutputType())
+    for _, method := range service.Method {
+        inputType := getJavaFQN(file, method.GetInputType())
+        outputType := getJavaFQN(file, method.GetOutputType())
         methodName := lowerCamelCase(method.GetName())
         methodPath := camelCase(method.GetName())
 
@@ -309,7 +309,7 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
     g.P(`}`)
     g.P()
 
-    out := &plugin.CodeGeneratorResponse_File{}
+    out := &pluginpb.CodeGeneratorResponse_File{}
     out.Content = proto.String(g.output.String())
     if multi {
         out.Name = proto.String(getJavaServiceClientClassFile(file, service))
@@ -322,7 +322,7 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
     return out
 }
 
-func (g *generator) generateServiceInterface(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) *plugin.CodeGeneratorResponse_File {
+func (g *generator) generateServiceInterface(file *descriptorpb.FileDescriptorProto, service *descriptorpb.ServiceDescriptorProto) *pluginpb.CodeGeneratorResponse_File {
     // TODO add comment
 
     serviceClass := getJavaServiceClassName(file, service)
@@ -343,9 +343,9 @@ func (g *generator) generateServiceInterface(file *descriptor.FileDescriptorProt
     g.P(`@javax.ws.rs.Path( "/`, servicePath, `" )`)
     g.P(`public interface `, serviceClass, ` {`)
 
-    for _, method := range service.GetMethod() {
-        inputType := getJavaType(file, method.GetInputType())
-        outputType := getJavaType(file, method.GetOutputType())
+    for _, method := range service.Method {
+        inputType := getJavaFQN(file, method.GetInputType())
+        outputType := getJavaFQN(file, method.GetOutputType())
         methodName := lowerCamelCase(method.GetName())
 
         // add comment
@@ -366,7 +366,7 @@ func (g *generator) generateServiceInterface(file *descriptor.FileDescriptorProt
     g.P(`}`)
     g.P()
 
-    out := &plugin.CodeGeneratorResponse_File{}
+    out := &pluginpb.CodeGeneratorResponse_File{}
     out.Content = proto.String(g.output.String())
 
     if multi {
@@ -400,19 +400,19 @@ func (g *generator) P(str ...string) {
     g.output.WriteByte('\n')
 }
 
-func (g *generator) getProtoFiles() []*descriptor.FileDescriptorProto {
-    files := make([]*descriptor.FileDescriptorProto, 0)
+func (g *generator) getProtoFiles() []*descriptorpb.FileDescriptorProto {
+    files := make([]*descriptorpb.FileDescriptorProto, 0)
     for _, fname := range g.Request.GetFileToGenerate() {
-        for _, proto := range g.Request.GetProtoFile() {
-            if proto.GetName() == fname {
-                files = append(files, proto)
+        for _, _proto := range g.Request.GetProtoFile() {
+            if _proto.GetName() == fname {
+                files = append(files, _proto)
             }
         }
     }
     return files
 }
 
-func (g *generator) getServicePath(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
+func (g *generator) getServicePath(file *descriptorpb.FileDescriptorProto, service *descriptorpb.ServiceDescriptorProto) string {
     name := camelCase(service.GetName())
     pkg := file.GetPackage()
     if pkg != "" {
