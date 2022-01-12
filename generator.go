@@ -195,7 +195,7 @@ func (g *generator) generateServiceClient(file *descriptorpb.FileDescriptorProto
     serviceClass := getJavaServiceClientClassName(file, service)
     servicePath := g.GetServicePath(file, service)
     interfaceClass := g.GetType(file, getJavaServiceClassName(file, service))
-    provider := g.GetType(file, "ProtoBufMessageProvider")
+    provider := fmt.Sprintf("%s.%s",getJavaPackage(file), "ProtoBufMessageProvider")
 
     static := ""
     if !multi {
