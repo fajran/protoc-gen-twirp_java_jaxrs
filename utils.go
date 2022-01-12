@@ -133,17 +133,17 @@ func getJavaPackage(file *descriptorpb.FileDescriptorProto) string {
 
 func getJavaImportedPackage(file *descriptorpb.FileDescriptorProto, name string) string {
 	var dep,pkg string
+	nameregex := regexp.MustCompile(regexp.MustCompile("[_-]").ReplaceAllString(name, "."))
 	for _, _dep := range file.Dependency {
-		if strings.Contains(_dep, name){
+		if nameregex.MatchString(_dep){
 			dep = _dep
 			break
 		}
 	}
 	src , err := os.ReadFile(fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep))
-	pwd, _ := os.Getwd()
 
 	if err != nil {
-		panic(err.Error()+fmt.Sprintf(" ENV: %s; PWD: %s;",os.Environ(), pwd))
+		panic(err)
 	}
 	text := string(src)
 	mpk := regexp.MustCompile("package ([^\n]+)")
