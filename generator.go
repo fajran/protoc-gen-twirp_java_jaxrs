@@ -193,9 +193,9 @@ func (g *generator) generateServiceClient(file *descriptorpb.FileDescriptorProto
     // TODO add comment
 
     serviceClass := getJavaServiceClientClassName(file, service)
-    servicePath := g.getServicePath(file, service)
-    interfaceClass := getJavaFQN(file, getJavaServiceClassName(file, service))
-    provider := getJavaFQN(file, "ProtoBufMessageProvider")
+    servicePath := g.GetServicePath(file, service)
+    interfaceClass := g.GetType(file, getJavaServiceClassName(file, service))
+    provider := g.GetType(file, "ProtoBufMessageProvider")
 
     static := ""
     if !multi {
@@ -282,8 +282,8 @@ func (g *generator) generateServiceClient(file *descriptorpb.FileDescriptorProto
     
 
     for _, method := range service.Method {
-        inputType := getJavaFQN(file, method.GetInputType())
-        outputType := getJavaFQN(file, method.GetOutputType())
+        inputType := g.GetType(file, method.GetInputType())
+        outputType := g.GetType(file, method.GetOutputType())
         methodName := lowerCamelCase(method.GetName())
         methodPath := camelCase(method.GetName())
 
@@ -326,7 +326,7 @@ func (g *generator) generateServiceInterface(file *descriptorpb.FileDescriptorPr
     // TODO add comment
 
     serviceClass := getJavaServiceClassName(file, service)
-    servicePath := g.getServicePath(file, service)
+    servicePath := g.GetServicePath(file, service)
     multi := file.Options.GetJavaMultipleFiles()
 
     if multi {
@@ -344,8 +344,8 @@ func (g *generator) generateServiceInterface(file *descriptorpb.FileDescriptorPr
     g.P(`public interface `, serviceClass, ` {`)
 
     for _, method := range service.Method {
-        inputType := getJavaFQN(file, method.GetInputType())
-        outputType := getJavaFQN(file, method.GetOutputType())
+        inputType := g.GetType(file, method.GetInputType())
+        outputType := g.GetType(file, method.GetOutputType())
         methodName := lowerCamelCase(method.GetName())
 
         // add comment
@@ -412,11 +412,43 @@ func (g *generator) getProtoFiles() []*descriptorpb.FileDescriptorProto {
     return files
 }
 
-func (g *generator) getServicePath(file *descriptorpb.FileDescriptorProto, service *descriptorpb.ServiceDescriptorProto) string {
+func (g *generator) GetServicePath(file *descriptorpb.FileDescriptorProto, service *descriptorpb.ServiceDescriptorProto) string {
     name := camelCase(service.GetName())
     pkg := file.GetPackage()
     if pkg != "" {
         name = pkg + "." + name
     }
     return name
+}
+
+func (g *generator) GetType(file *descriptorpb.FileDescriptorProto, name string) string {
+
+    multi := file.Options.GetJavaMultipleFiles()
+    if name[0:1] == "." {
+        name = name[1:]
+    }
+
+    path, pkg, class, dot := "", "", "", strings.LastIndex(name, ".")
+    if dot > -1 {
+        slice := strings.Split(name, ".")
+        pkg, class = slice[0], slice[1]
+    } else {
+        pkg, class = "", name
+    }
+
+    if containsType(class, file){
+        path = getJavaPackage(file)
+    } else {
+        for _, dep := range g.Request.GetProtoFile() {
+            if dep.GetPackage() == pkg && containsType(class, file){
+                path = getJavaPackage(file)
+            }
+        }
+    }
+
+    if multi {
+        return fmt.Sprintf("%s.%s", path, class)
+    } else {
+        return fmt.Sprintf("%s.%s.%s", path, getJavaOuterClassName(file), class)
+    }
 }

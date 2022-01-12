@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"unicode"
 
@@ -131,54 +129,6 @@ func getJavaPackage(file *descriptorpb.FileDescriptorProto) string {
 	return file.GetPackage()
 }
 
-func getJavaImportedPackage(file *descriptorpb.FileDescriptorProto, name string) string {
-	var dep,pkg string
-	nameregex := regexp.MustCompile(regexp.MustCompile("[_-]").ReplaceAllString(name, "."))
-	for _, _dep := range file.Dependency {
-		if nameregex.MatchString(_dep){
-			dep = _dep
-			break
-		}
-	}
-	src , err := os.ReadFile(fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep))
-
-	if err != nil {
-		panic(err)
-	}
-	text := string(src)
-	mpk := regexp.MustCompile("package ([^\n]+)")
-	mjpk := regexp.MustCompile("option java_package = \"([^\"]+)\"")
-	if match := mjpk.FindStringSubmatch(text); match != nil {
-		pkg = match[1]
-	} else if match := mpk.FindStringSubmatch(text); match != nil{
-		pkg = match[1]
-	}
-
-	return pkg
-}
-
-func getJavaFQN(file *descriptorpb.FileDescriptorProto, name string) string {
-
-	multi := file.Options.GetJavaMultipleFiles()
-	if name[0:1] == "." {
-		name = name[1:]
-	}
-
-	var pkg string
-	if strings.Contains(name, "."){
-		pkg = getJavaImportedPackage(file, strings.Split(name, ".")[0])
-	} else {
-		pkg = getJavaPackage(file)
-	}
-	path := strings.Split(name, ".")
-	class := path[len(path)-1]
-
-	if multi {
-		return fmt.Sprintf("%s.%s", pkg, class)
-	} else {
-		return fmt.Sprintf("%s.%s.%s",pkg, getJavaOuterClassName(file), class)
-	}
-}
 
 func camelCase(str string) string {
 	parts := strings.Split(str, "_")
