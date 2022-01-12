@@ -141,8 +141,9 @@ func getJavaImportedPackage(file *descriptorpb.FileDescriptorProto, name string)
 	}
 	src , err := os.ReadFile(fmt.Sprintf("%s", dep))
 	pwd, _ := os.Getwd()
+
 	if err != nil {
-		panic(err.Error()+fmt.Sprintf("GOPATH: %s; GOROOT: %s; PWD: %s;",os.Getenv("GOPATH"), os.Getenv("GOROOT"), pwd))
+		panic(err.Error()+fmt.Sprintf(" ENV: %s; PWD: %s;",os.Environ(), pwd))
 	}
 	text := string(src)
 	mpk := regexp.MustCompile("package ([^\n]+)")
