@@ -6,14 +6,14 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"google.golang.org/protobuf/types/descriptorpb"
 )
 
 const (
 	javaOuterClassSuffix = "OuterClass"
 )
 
-func getProtoName(file *descriptor.FileDescriptorProto) string {
+func getProtoName(file *descriptorpb.FileDescriptorProto) string {
 	name := file.GetName()
 	ext := filepath.Ext(name)
 	if ext == ".proto" || ext == ".protodevel" {
@@ -22,7 +22,7 @@ func getProtoName(file *descriptor.FileDescriptorProto) string {
 	return name
 }
 
-func getJavaOuterClassName(file *descriptor.FileDescriptorProto) string {
+func getJavaOuterClassName(file *descriptorpb.FileDescriptorProto) string {
 	name := file.Options.GetJavaOuterClassname()
 	if name != "" {
 		return name
@@ -30,13 +30,13 @@ func getJavaOuterClassName(file *descriptor.FileDescriptorProto) string {
 
 	name = camelCase(getProtoName(file))
 	outer := name + javaOuterClassSuffix
-	for _, desc := range file.GetMessageType() {
+	for _, desc := range file.MessageType {
 		if strings.Title(desc.GetName()) == name {
 			return outer
 		}
 	}
 
-	for _, desc := range file.GetService() {
+	for _, desc := range file.Service {
 		if strings.Title(desc.GetName()) == name {
 			return outer
 		}
@@ -51,7 +51,7 @@ func getJavaOuterClassName(file *descriptor.FileDescriptorProto) string {
 	return name
 }
 
-func getJavaOuterClassFile(file *descriptor.FileDescriptorProto) string {
+func getJavaOuterClassFile(file *descriptorpb.FileDescriptorProto) string {
 	className := getJavaOuterClassName(file)
 	pkg := getJavaPackage(file)
 	if pkg == "" {
@@ -62,7 +62,7 @@ func getJavaOuterClassFile(file *descriptor.FileDescriptorProto) string {
 	}
 }
 
-func containsType(name string, file *descriptor.FileDescriptorProto) bool {
+func containsType(name string, file *descriptorpb.FileDescriptorProto) bool {
 	for _, t := range file.GetEnumType() {
 		if t.GetName() == name {
 			return true
@@ -81,12 +81,12 @@ func containsType(name string, file *descriptor.FileDescriptorProto) bool {
 	return false
 }
 
-func getJavaServiceClassName(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
+func getJavaServiceClassName(file *descriptorpb.FileDescriptorProto, service *descriptorpb.ServiceDescriptorProto) string {
 	serviceName := camelCase(service.GetName())
 	return fmt.Sprintf("%s", serviceName)
 }
 
-func getJavaServiceClassFile(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
+func getJavaServiceClassFile(file *descriptorpb.FileDescriptorProto, service *descriptorpb.ServiceDescriptorProto) string {
 	serviceClass := getJavaServiceClassName(file, service)
 	pkg := getJavaPackage(file)
 	if pkg == "" {
@@ -97,7 +97,7 @@ func getJavaServiceClassFile(file *descriptor.FileDescriptorProto, service *desc
 	}
 }
 
-func getJavaServiceClientClassName(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
+func getJavaServiceClientClassName(file *descriptorpb.FileDescriptorProto, service *descriptorpb.ServiceDescriptorProto) string {
 	serviceName := camelCase(service.GetName())
 	name := fmt.Sprintf("%sClient", serviceName)
 	if containsType(name, file) {
@@ -106,12 +106,12 @@ func getJavaServiceClientClassName(file *descriptor.FileDescriptorProto, service
 	return name
 }
 
-func getJavaServiceClientClassFile(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
+func getJavaServiceClientClassFile(file *descriptorpb.FileDescriptorProto, service *descriptorpb.ServiceDescriptorProto) string {
 	serviceClass := getJavaServiceClientClassName(file, service)
 	return getJavaServiceClientClassFileByString(file, serviceClass)
 }
 
-func getJavaServiceClientClassFileByString(file *descriptor.FileDescriptorProto, serviceClass string) string {
+func getJavaServiceClientClassFileByString(file *descriptorpb.FileDescriptorProto, serviceClass string) string {
 	pkg := getJavaPackage(file)
 	if pkg == "" {
 		return fmt.Sprintf("%s.java", serviceClass)
@@ -121,7 +121,7 @@ func getJavaServiceClientClassFileByString(file *descriptor.FileDescriptorProto,
 	}
 }
 
-func getJavaPackage(file *descriptor.FileDescriptorProto) string {
+func getJavaPackage(file *descriptorpb.FileDescriptorProto) string {
 	pkg := file.Options.GetJavaPackage()
 	if pkg != "" {
 		return pkg
@@ -129,27 +129,6 @@ func getJavaPackage(file *descriptor.FileDescriptorProto) string {
 	return file.GetPackage()
 }
 
-func getJavaType(file *descriptor.FileDescriptorProto, name string) string {
-	pkg := getJavaPackage(file)
-	multi := file.Options.GetJavaMultipleFiles()
-	if name[0:1] == "." {
-		name = name[1:]
-	}
-	tfpath := strings.Split(name, ".")
-	tname := tfpath[len(tfpath)-1]
-	tpath := tfpath[0:len(tfpath)-1]
-	if pkg != ""{
-		tpath = append([]string{pkg},tpath[0:]...)
-	}
-
-	if multi {
-		return strings.Join(append(tpath, tname),".")
-	} else {
-		outerClass := getJavaOuterClassName(file)
-		return strings.Join(append(tpath, outerClass, tname),".")
-	}
-	return name
-}
 
 func camelCase(str string) string {
 	parts := strings.Split(str, "_")

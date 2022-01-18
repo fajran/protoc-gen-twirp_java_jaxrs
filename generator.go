@@ -3,22 +3,21 @@ package main
 import (
     "bytes"
     "fmt"
-
-    "github.com/golang/protobuf/proto"
-    "github.com/golang/protobuf/protoc-gen-go/descriptor"
-    plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
+    "google.golang.org/protobuf/proto"
+    "google.golang.org/protobuf/types/descriptorpb"
+    "google.golang.org/protobuf/types/pluginpb"
     "strings"
 )
 
 type generator struct {
-    Request  *plugin.CodeGeneratorRequest
-    Response *plugin.CodeGeneratorResponse
+    Request  *pluginpb.CodeGeneratorRequest
+    Response *pluginpb.CodeGeneratorResponse
 
     output *bytes.Buffer
     indent string
 }
 
-func newGenerator(req *plugin.CodeGeneratorRequest) *generator {
+func newGenerator(req *pluginpb.CodeGeneratorRequest) *generator {
     return &generator{
         Request:  req,
         Response: nil,
@@ -28,7 +27,7 @@ func newGenerator(req *plugin.CodeGeneratorRequest) *generator {
 }
 
 func (g *generator) Generate() error {
-    g.Response = &plugin.CodeGeneratorResponse{}
+    g.Response = &pluginpb.CodeGeneratorResponse{}
 
     g.Response.File = append(g.Response.File, g.generateResponseMetaDataProcessorInterface())
     for _, file := range g.getProtoFiles() {
@@ -41,14 +40,14 @@ func (g *generator) Generate() error {
     return nil
 }
 
-func (g *generator) processFile(file *descriptor.FileDescriptorProto) error {
+func (g *generator) processFile(file *descriptorpb.FileDescriptorProto) error {
     if file.Options.GetJavaGenericServices() {
         return fmt.Errorf("twirp_java_jaxrs cannot not work with java_generic_services option")
     }
 
     g.Response.File = append(g.Response.File, g.generateProvider(file))
 
-    for _, service := range file.GetService() {
+    for _, service := range file.Service {
         out := g.generateServiceInterface(file, service)
         g.Response.File = append(g.Response.File, out)
 
@@ -59,7 +58,7 @@ func (g *generator) processFile(file *descriptor.FileDescriptorProto) error {
     return nil
 }
 
-func (g *generator) generateResponseMetaDataProcessorInterface() *plugin.CodeGeneratorResponse_File {
+func (g *generator) generateResponseMetaDataProcessorInterface() *pluginpb.CodeGeneratorResponse_File {
 
     serviceName := "IResponseMetaDataProcessor"
 
@@ -73,14 +72,14 @@ func (g *generator) generateResponseMetaDataProcessorInterface() *plugin.CodeGen
     g.P(`}`)
     g.P()
 
-    out := &plugin.CodeGeneratorResponse_File{}
+    out := &pluginpb.CodeGeneratorResponse_File{}
     out.Content = proto.String(g.output.String())
     out.Name = proto.String(fmt.Sprintf("plugin/%s.java", serviceName))
     g.Reset()
     return out
 }
 
-func (g *generator) generateProvider(file *descriptor.FileDescriptorProto) *plugin.CodeGeneratorResponse_File {
+func (g *generator) generateProvider(file *descriptorpb.FileDescriptorProto) *pluginpb.CodeGeneratorResponse_File {
 
     multi := file.Options.GetJavaMultipleFiles()
     serviceName := "ProtoBufMessageProvider"
@@ -165,7 +164,7 @@ func (g *generator) generateProvider(file *descriptor.FileDescriptorProto) *plug
     g.P(`}`)
     g.P()
 
-    out := &plugin.CodeGeneratorResponse_File{}
+    out := &pluginpb.CodeGeneratorResponse_File{}
     out.Content = proto.String(g.output.String())
     if multi {
         out.Name = proto.String(getJavaServiceClientClassFileByString(file, serviceName))
@@ -177,7 +176,7 @@ func (g *generator) generateProvider(file *descriptor.FileDescriptorProto) *plug
     return out
 }
 
-func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) *plugin.CodeGeneratorResponse_File {
+func (g *generator) generateServiceClient(file *descriptorpb.FileDescriptorProto, service *descriptorpb.ServiceDescriptorProto) *pluginpb.CodeGeneratorResponse_File {
     multi := file.Options.GetJavaMultipleFiles()
 
     if multi {
@@ -194,9 +193,9 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
     // TODO add comment
 
     serviceClass := getJavaServiceClientClassName(file, service)
-    servicePath := g.getServicePath(file, service)
-    interfaceClass := getJavaType(file, getJavaServiceClassName(file, service))
-    provider := getJavaType(file, "ProtoBufMessageProvider")
+    servicePath := g.GetServicePath(file, service)
+    interfaceClass := g.GetType(file, getJavaServiceClassName(file, service))
+    provider := fmt.Sprintf("%s.%s",getJavaPackage(file), "ProtoBufMessageProvider")
 
     static := ""
     if !multi {
@@ -226,27 +225,20 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
     g.P(`      if(responseMetaDataProcessor != null){ responseMetaDataProcessor.process(response); }`)
     g.P(`      return r;`)
     g.P(`    } else {`)
-    g.P(`      throw new javax.ws.rs.WebApplicationException(response);`)
+    g.P(`      throw new javax.ws.rs.WebApplicationException(response.readEntity(String.class), response);`)
     g.P(`    }`)
     g.P(`  }`)
     g.P()
-    g.P(`  private <R> R call(String path, com.google.protobuf.Message req, Class<R> responseClass) {`)
-    g.P(`    javax.ws.rs.core.Response response = target.path(path)`)
-    g.P(`        .request("application/protobuf")`)
-    g.P(`        .post(javax.ws.rs.client.Entity.entity(req, "application/protobuf"));`)
-    g.P(`    if (response.getStatusInfo().getFamily() == javax.ws.rs.core.Response.Status.Family.SUCCESSFUL) {`)
-    g.P(`      R r = response.readEntity(responseClass);`)
-    g.P(`      response.close();`)
-    g.P(`      if(responseMetaDataProcessor != null){ responseMetaDataProcessor.process(response); }`)
-    g.P(`      return r;`)
-    g.P(`    } else {`)
-    g.P(`      throw new javax.ws.rs.WebApplicationException(response);`)
-    g.P(`    }`)
-    g.P(`  }`)
-    g.P()
-    g.P(`  private <R> java.util.concurrent.Future<R> call(String path, com.google.protobuf.Message request, Class<R> responseClass, int retries) {`)
-    g.P(`    if(retries <= 0){throw new IllegalArgumentException("Retries count can't be less than or equal to 0");}`)
-    g.P(`    final javax.ws.rs.client.AsyncInvoker invoker = this.target.path(path).request("application/protobuf").async();`)
+    g.P(`  private <R> java.util.concurrent.Future<R> call(`)
+    g.P(`      String path,`)
+    g.P(`      com.google.protobuf.Message request,`)
+    g.P(`      javax.ws.rs.core.MultivaluedMap<String, Object> headers,`)
+    g.P(`      Class<R> responseClass,`)
+    g.P(`      java.util.function.Function<R, Boolean> predicate,`)
+    g.P(`      int retries`)
+    g.P(`  ) {`)
+    g.P(`    headers.add("Accept", "application/protobuf");`)
+    g.P(`    final javax.ws.rs.client.AsyncInvoker invoker = this.target.path(path).request().headers(headers).async();`)
     g.P(`    final javax.ws.rs.client.Entity<com.google.protobuf.Message> entity = javax.ws.rs.client.Entity.entity(request, "application/protobuf");`)
     g.P(`    java.util.concurrent.CompletableFuture<R> future = new java.util.concurrent.CompletableFuture<>();`)
     g.P(`    invoker.post(entity, new javax.ws.rs.client.InvocationCallback<javax.ws.rs.core.Response>() {`)
@@ -254,13 +246,15 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
     g.P()
     g.P(`      @Override`)
     g.P(`      public void completed(javax.ws.rs.core.Response response) {`)
+    g.P(`        R _response = null;`)
     g.P(`        if (response.getStatusInfo().getFamily() == javax.ws.rs.core.Response.Status.Family.SUCCESSFUL) {`)
-    g.P(`          future.complete(response.readEntity(responseClass));`)
+    g.P(`          _response = response.readEntity(responseClass);`)
     g.P(`          response.close();`)
-    g.P(`          if(responseMetaDataProcessor != null){ responseMetaDataProcessor.process(response); }`)
-    g.P(`        } else {`)
-    g.P(`          failed(new javax.ws.rs.WebApplicationException(response));`)
+    g.P(`          if(predicate != null){if(predicate.apply(_response)){future.complete(_response);}}`)
+    g.P(`          else {future.complete(_response);}`)
     g.P(`        }`)
+    g.P(`        if (_response == null || !future.isDone()){ failed(new javax.ws.rs.WebApplicationException(response.readEntity(String.class), response));}`)
+    g.P(`        if(responseMetaDataProcessor != null){ responseMetaDataProcessor.process(response); }`)
     g.P(`      }`)
     g.P()
     g.P(`      @Override`)
@@ -280,36 +274,70 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
     g.P(`    return future;`)
     g.P(`  }`)
     g.P()
+    
 
-    for _, method := range service.GetMethod() {
-        inputType := getJavaType(file, method.GetInputType())
-        outputType := getJavaType(file, method.GetOutputType())
+    for _, method := range service.Method {
+        inputType := g.GetType(file, method.GetInputType())
+        outputType := g.GetType(file, method.GetOutputType())
         methodName := lowerCamelCase(method.GetName())
         methodPath := camelCase(method.GetName())
 
         g.P()
-        g.P(`// Performing a request with headers`)
+        g.P(`/** Performing a request without headers */`)
+        g.P(`  @Override`)
+        g.P(`  public `, outputType, ` `, methodName, `(`, inputType, ` request) {`)
+        g.P(`    return call("/`, methodPath, `", request, new javax.ws.rs.core.MultivaluedHashMap<>(), `, outputType, `.class);`)
+        g.P(`  }`)
+        g.P()
+        g.P(`/** Performing a request with headers */`)
         g.P(`  public `, outputType, ` `, methodName, `(`, inputType, ` request, javax.ws.rs.core.MultivaluedMap<String, Object> headers) {`)
         g.P(`    return call("/`, methodPath, `", request, headers, `, outputType, `.class);`)
         g.P(`  }`)
         g.P()
-        // add comment
+        g.P(`/** Performing async request without headers and without predicate */`)
         g.P(`  @Override`)
-        g.P(`  public `, outputType, ` `, methodName, `(`, inputType, ` request) {`)
-        g.P(`    return call("/`, methodPath, `", request, `, outputType, `.class);`)
+        g.P(`  public java.util.concurrent.Future<`, outputType, `> `, methodName, `(`, inputType, ` request, Integer retries){`)
+        g.P(`    if(retries == null || retries == 0){retries = 10;}`)
+        g.P(`    return call("/`, methodPath, `", request, new javax.ws.rs.core.MultivaluedHashMap<>(), `, outputType, `.class, null, retries);`)
         g.P(`  }`)
         g.P()
-        // add comment
-        g.P(`  @Override`)
-        g.P(`  public java.util.concurrent.Future<`, outputType, `> `, methodName, `(`, inputType, ` request, int retries) {`)
-        g.P(`    return call("/`, methodPath, `", request, `, outputType, `.class, retries);`)
+        g.P(`/** Performing async request with headers and predicate */`)
+        g.P(`  public java.util.concurrent.Future<`, outputType, `> `, methodName, `(`)
+        g.P(`    `, inputType, ` request,`)
+        g.P(`    javax.ws.rs.core.MultivaluedMap<String, Object> headers,`)
+        g.P(`    java.util.function.Function<`, outputType,`, `, `Boolean> predicate,`)
+        g.P(`    Integer retries`)
+        g.P(`  ){`)
+        g.P(`    if(retries == null || retries == 0){retries = 10;}`)
+        g.P(`    return call("/`, methodPath, `", request, headers, `, outputType, `.class, predicate, retries);`)
         g.P(`  }`)
+        g.P()
+        g.P(`/** Performing async request without headers and with predicate */`)
+        g.P(`  public java.util.concurrent.Future<`, outputType, `> `, methodName, `(`)
+        g.P(`    `, inputType, ` request,`)
+        g.P(`    java.util.function.Function<`, outputType,`, `, `Boolean> predicate,`)
+        g.P(`    Integer retries`)
+        g.P(`  ){`)
+        g.P(`    if(retries == null || retries == 0){retries = 10;}`)
+        g.P(`    return call("/`, methodPath, `", request, new javax.ws.rs.core.MultivaluedHashMap<>(), `, outputType, `.class, predicate, retries);`)
+        g.P(`  }`)
+        g.P()
+        g.P(`/** Performing async request with headers and without predicate */`)
+        g.P(`  public java.util.concurrent.Future<`, outputType, `> `, methodName, `(`)
+        g.P(`    `, inputType, ` request,`)
+        g.P(`    javax.ws.rs.core.MultivaluedMap<String, Object> headers,`)
+        g.P(`    Integer retries`)
+        g.P(`  ){`)
+        g.P(`    if(retries == null || retries == 0){retries = 10;}`)
+        g.P(`    return call("/`, methodPath, `", request, headers, `, outputType, `.class, null, retries);`)
+        g.P(`  }`)
+        g.P()
     }
 
     g.P(`}`)
     g.P()
 
-    out := &plugin.CodeGeneratorResponse_File{}
+    out := &pluginpb.CodeGeneratorResponse_File{}
     out.Content = proto.String(g.output.String())
     if multi {
         out.Name = proto.String(getJavaServiceClientClassFile(file, service))
@@ -322,11 +350,11 @@ func (g *generator) generateServiceClient(file *descriptor.FileDescriptorProto, 
     return out
 }
 
-func (g *generator) generateServiceInterface(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) *plugin.CodeGeneratorResponse_File {
+func (g *generator) generateServiceInterface(file *descriptorpb.FileDescriptorProto, service *descriptorpb.ServiceDescriptorProto) *pluginpb.CodeGeneratorResponse_File {
     // TODO add comment
 
     serviceClass := getJavaServiceClassName(file, service)
-    servicePath := g.getServicePath(file, service)
+    servicePath := g.GetServicePath(file, service)
     multi := file.Options.GetJavaMultipleFiles()
 
     if multi {
@@ -343,9 +371,9 @@ func (g *generator) generateServiceInterface(file *descriptor.FileDescriptorProt
     g.P(`@javax.ws.rs.Path( "/`, servicePath, `" )`)
     g.P(`public interface `, serviceClass, ` {`)
 
-    for _, method := range service.GetMethod() {
-        inputType := getJavaType(file, method.GetInputType())
-        outputType := getJavaType(file, method.GetOutputType())
+    for _, method := range service.Method {
+        inputType := g.GetType(file, method.GetInputType())
+        outputType := g.GetType(file, method.GetOutputType())
         methodName := lowerCamelCase(method.GetName())
 
         // add comment
@@ -360,13 +388,13 @@ func (g *generator) generateServiceInterface(file *descriptor.FileDescriptorProt
         g.P(`  `, `@javax.ws.rs.Path( "/`, strings.Title(methodName), `" )`)
         g.P(`  `, `@javax.ws.rs.Consumes({"application/protobuf", "application/json"})`)
         g.P(`  `, `@javax.ws.rs.Produces({"application/protobuf", "application/json"})`)
-        g.P(`  java.util.concurrent.Future<`, outputType, `> `, methodName, `(`, inputType, ` request, int retries);`)
+        g.P(`  java.util.concurrent.Future<`, outputType, `> `, methodName, `(`, inputType, ` request, Integer retries);`)
     }
 
     g.P(`}`)
     g.P()
 
-    out := &plugin.CodeGeneratorResponse_File{}
+    out := &pluginpb.CodeGeneratorResponse_File{}
     out.Content = proto.String(g.output.String())
 
     if multi {
@@ -400,23 +428,55 @@ func (g *generator) P(str ...string) {
     g.output.WriteByte('\n')
 }
 
-func (g *generator) getProtoFiles() []*descriptor.FileDescriptorProto {
-    files := make([]*descriptor.FileDescriptorProto, 0)
+func (g *generator) getProtoFiles() []*descriptorpb.FileDescriptorProto {
+    files := make([]*descriptorpb.FileDescriptorProto, 0)
     for _, fname := range g.Request.GetFileToGenerate() {
-        for _, proto := range g.Request.GetProtoFile() {
-            if proto.GetName() == fname {
-                files = append(files, proto)
+        for _, _proto := range g.Request.GetProtoFile() {
+            if _proto.GetName() == fname {
+                files = append(files, _proto)
             }
         }
     }
     return files
 }
 
-func (g *generator) getServicePath(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto) string {
+func (g *generator) GetServicePath(file *descriptorpb.FileDescriptorProto, service *descriptorpb.ServiceDescriptorProto) string {
     name := camelCase(service.GetName())
     pkg := file.GetPackage()
     if pkg != "" {
         name = pkg + "." + name
     }
     return name
+}
+
+func (g *generator) GetType(file *descriptorpb.FileDescriptorProto, name string) string {
+
+    multi := file.Options.GetJavaMultipleFiles()
+    if name[0:1] == "." {
+        name = name[1:]
+    }
+
+    path, pkg, class, dot := "", "", "", strings.LastIndex(name, ".")
+    if dot > -1 {
+        pkg, class = name[:dot], name[dot+1:]
+    } else {
+        pkg, class = "", name
+    }
+
+    if containsType(class, file){
+        path = getJavaPackage(file)
+    } else {
+        for _, dep := range g.Request.GetProtoFile() {
+            if dep.GetPackage() == pkg && containsType(class, dep){
+                path = getJavaPackage(dep)
+                break
+            }
+        }
+    }
+
+    if multi {
+        return fmt.Sprintf("%s.%s", path, class)
+    } else {
+        return fmt.Sprintf("%s.%s.%s", path, getJavaOuterClassName(file), class)
+    }
 }

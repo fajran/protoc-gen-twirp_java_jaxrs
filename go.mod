@@ -1,8 +1,5 @@
 module github.com/re-l124c41/protoc-gen-twirp_java_jaxrs
 
-go 1.8
+go 1.17
 
-require (
-	github.com/golang/protobuf v1.5.2
-	google.golang.org/protobuf v1.26.0 // indirect
-)
+require google.golang.org/protobuf v1.27.1
