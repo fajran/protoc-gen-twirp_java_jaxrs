@@ -1,3 +1,3 @@
 compile :
-	go install github.com/fajran/protoc-gen-twirp_java_jaxrs
+	go install github.com/re-l124c41/protoc-gen-twirp_java_jaxrs
 
