@@ -13,7 +13,7 @@ stable.
 Build
 -----
 
-    go get github.com/fajran/protoc-gen-twirp_java_jaxrs
+    go get github.com/nutshelllabs/protoc-gen-twirp_java_jaxrs
 
 
 Usage
